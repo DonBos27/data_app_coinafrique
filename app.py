@@ -89,8 +89,8 @@ def clean_text(x):
     s = re.sub(r"\s+", " ", str(x)).strip()
     return s if s else None
 
-
-def clean_price(raw):        # '10 000 CFA' -> 10000 ; 'Prix sur demande' -> None
+ # '10 000 CFA' -> 10000 ; 'Prix sur demande' -> None
+def clean_price(raw):       
     
     if raw is None or (isinstance(raw, float) and pd.isna(raw)):
         return None
@@ -100,20 +100,15 @@ def clean_price(raw):        # '10 000 CFA' -> 10000 ; 'Prix sur demande' -> Non
     digits = re.sub(r"[^\d]", "", s)
     return int(digits) if digits else None
 
-
+#  Enlève 'location_on' et normalise.
 def clean_address(addr):
-    """Enlève 'location_on' et normalise."""
+    
     addr = clean_text(addr)
     if not addr:
         return None
     addr = addr.replace("location_on", "").strip()
     addr = re.sub(r"\s*,\s*", ", ", addr).strip()
     return addr or None
-
-
-# def df_to_csv_bytes(df: pd.DataFrame) -> bytes:
-#     return df.to_csv(index=False).encode("utf-8")
-
 
 # =============================
 # HTTP SIMPLE 
@@ -124,9 +119,9 @@ def get_html(url: str) -> str:
     return r.text
 
 
-# =============================
-# TAB 1: BS4 (cours)
-# =============================
+# ======================================
+# TAB 1: BeautifulSoup Scrapping
+# ======================================
 def parse_card(card: BeautifulSoup, ad_url: str) -> dict:
     # Prix 
     price_tag = card.select_one("h3, .price, [class*=price]")
@@ -165,13 +160,9 @@ def scrape_category_bs4(category_url: str, pages: int) -> pd.DataFrame:
     for p in range(1, int(pages) + 1):
         url = f"{category_url}?page={p}"
 
-        # petite pause (évite surcharge)
-        # time.sleep(0.6 + random.random() * 0.4)
-
         try:
             html = get_html(url)
         except Exception:
-            # si une page plante, on passe à la suivante
             continue
 
         soup = BeautifulSoup(html, "lxml")
@@ -205,18 +196,17 @@ def scrape_category_bs4(category_url: str, pages: int) -> pd.DataFrame:
 
     return df
 
-
 # =============================
 # TAB 3: RAW WEB SCRAPPERS 
 # =============================
 def clean_raw_for_dashboard(raw_df: pd.DataFrame) -> pd.DataFrame:
     df = raw_df.copy()
 
-    # Supprimer colonnes techniques (si elles existent)
+    # Supprimer colonnes techniques qui existent
     cols_to_drop = ["pagination", "_follow", "_followSelectorId", "web_scraper_order", "web_scraper_start_url"]
     df = df.drop(columns=[c for c in cols_to_drop if c in df.columns], errors="ignore")
 
-    # Renommer colonnes (simple)
+    # Renommer colonnes 
     rename_map = {}
     for c in df.columns:
         low = c.lower()
@@ -241,22 +231,19 @@ def clean_raw_for_dashboard(raw_df: pd.DataFrame) -> pd.DataFrame:
     if "image_lien" in df.columns:
         df["image_lien"] = df["image_lien"].apply(clean_text)
 
-    # Colonnes finales (si manquantes, on ignore)
+    # Colonnes finales 
     keep = [c for c in ["prix", "adresse", "titre", "image_lien"] if c in df.columns]
     df = df[keep].dropna(how="all").drop_duplicates()
     return df
 
-
 # =============================
-# HEADER (navbar-like)
+# HEADER 
 # =============================
-st.markdown('<div class="card">', unsafe_allow_html=True)
 st.markdown("## Mini Projet: CoinAfrique")
-st.markdown("<div class='small-muted'>Scraping with beautifulsoup • RAW web scraper à télécharger • Dashboard des données • Evaluation de l'app</div>",
+st.markdown("<div class='small-muted'>Scraping with beautifulsoup | RAW web scraper à télécharger | Dashboard des données | Evaluation de l'app</div>",
             unsafe_allow_html=True)
 st.markdown("</div>", unsafe_allow_html=True)
 st.divider()
-
 
 # =============================
 # SIDEBAR
@@ -264,37 +251,36 @@ st.divider()
 with st.sidebar:
     st.markdown(
         """
-        <div class="sidebar-logo-wrap">
           <div class="sidebar-logo-circle">
             <img src="https://img.icons8.com/color/1200/web-scraper.jpg" />
           </div>
-        </div>
         """,
         unsafe_allow_html=True
     )
-    st.markdown("## Sidebar des Infos")
-    st.caption("Une vue sur le projet ")
+    st.markdown("## Mini Projet: CoinAfrique")
+    st.caption("Collecter des données multi-pages pour scraper CoinAfrique avec BeautifulSoup, " 
+               "consulter et télécharger les exports RAW Web Scraper, " 
+               "nettoyer et visualiser des annonces CoinAfrique, "
+               "et enfin un formulaire d'évaluation utilisateur integré (Google Forms / KoboToolbox)."
+    )
+    st.divider()
+    st.markdown("### Sources")
+    for k in CATEGORIES.values():
+        st.write(f"{k}")
     st.divider()
     st.markdown("### Catégories disponibles")
     for k in CATEGORIES.keys():
         st.write(f"• {k}")
-    st.divider()
-    st.markdown("### Conseil démo")
-    st.caption("Pour éviter les erreurs serveur, teste avec 1–2 pages.")
-    st.divider()
 
-
-
-# =============================
-# TABS
-# =============================
+# ==============================================
+# LES TABS QUI SONT LES LIENS OU ONGLETS 
+# ==============================================
 tab1, tab2, tab3, tab4 = st.tabs([
     "1) BeautifulSoup",
     "2) Download RAW DATA",
     "3) Dashboard",
     "4) Évaluation",
 ])
-
 
 # =============================
 # TAB 1
@@ -322,7 +308,6 @@ with tab1:
             st.success(f"Terminé | {len(df)} annonces")
             st.dataframe(df, width="stretch", height=520)
 
-
 # =============================
 # TAB 2
 # =============================
@@ -340,7 +325,6 @@ with tab2:
     st.success(f"`Fichier {file_name} contenant {len(raw_df)} lignes chargé avec success`")
 
     st.dataframe(raw_df, width="stretch", height=540)
-
 
 # =============================
 # TAB 3
@@ -365,7 +349,6 @@ with tab3:
     k3.metric("Prix moyen (CFA)", int(clean_df["prix"].dropna().mean()) if "prix" in clean_df and clean_df["prix"].notna().any() else 0)
     k4.metric("Localisations", int(clean_df["adresse"].notna().sum()) if "adresse" in clean_df else 0)
 
-    
     g1, g2 = st.columns(2)
 
     # Graphe 1 : Répartition par tranche de prix
@@ -396,13 +379,12 @@ with tab3:
     
     st.dataframe(clean_df, width="stretch", height=420)
 
-
 # =============================
 # TAB 4
 # =============================
 with tab4:
     st.markdown("### Évaluation de l’app")
-    st.caption("Choisis un formulaire d’évaluation : Google Forms (simple) ou KoboToolbox (avec logique).")
+    st.caption("Choisis un formulaire d’évaluation : KoboToolbox ou Google Forms ")
     st.markdown("</div>", unsafe_allow_html=True)
 
     c1, c2 = st.columns(2)
@@ -415,3 +397,41 @@ with tab4:
         st.markdown("#### Google Forms")
         st.link_button("Ouvrir le Google Form", GOOGLE_URL)
         st.markdown("</div>", unsafe_allow_html=True)
+
+st.markdown("""
+<style>
+/* Footer */
+.app-footer {         
+  width: 100%;
+  text-align: center;
+}
+
+/* Contenu du footer */
+.app-footer .footer-box {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  font-size: 0.85rem;
+  color: #6b7280; 
+}
+
+/* Lien GitHub */
+.app-footer a {
+  color: #2F80ED;
+  text-decoration: none;
+  font-weight: 600;
+}
+.app-footer a:hover {
+  text-decoration: underline;
+}
+</style>
+
+<div class="app-footer">
+  <div class="footer-box">
+    © 2026 • Tous droits réservés •
+    <a href="https://github.com/DonBos27" target="_blank">Don-Christ Bosenga Github</a> •
+    Fait avec beaucoup de ❤️ et de ☕️
+  </div>
+</div>
+""", unsafe_allow_html=True)
